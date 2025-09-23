@@ -1,6 +1,13 @@
-# AI 면접 코치 서비스
+# 🎯 AI Interview Coach
 
-자기소개서를 기반으로 한 AI 면접 시뮬레이션 서비스입니다.
+> AI-powered interview simulation platform with real-time feedback and Firebase integration
+
+자기소개서를 기반으로 한 AI 면접 시뮬레이션 서비스입니다. 실시간 음성 인식, AI 평가, 행동 분석을 통해 완벽한 면접 연습 환경을 제공합니다.
+
+[![GitHub stars](https://img.shields.io/github/stars/your-username/AI-Interview-Coach?style=social)](https://github.com/your-username/AI-Interview-Coach)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
+[![Firebase](https://img.shields.io/badge/Firebase-9-orange.svg)](https://firebase.google.com/)
 
 ## 주요 기능
 
