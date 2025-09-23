@@ -11,13 +11,12 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'terser',
-    rollupOptions: {
-      external: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage']
-    }
+    minify: 'terser'
   },
   optimizeDeps: {
-    include: ['react', 'react-dom'],
-    exclude: ['firebase']
+    include: ['react', 'react-dom']
+  },
+  define: {
+    global: 'globalThis'
   }
 })

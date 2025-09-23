@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI 면접 코치</title>
+    <!-- Firebase CDN -->
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+      import { getAuth } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+      import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+      import { getStorage } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js';
+      
+      window.firebase = { initializeApp, getAuth, getFirestore, getStorage };
+    </script>
   </head>
   <body>
     <div id="root"></div>

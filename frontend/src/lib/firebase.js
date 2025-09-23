@@ -1,8 +1,5 @@
-import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
-import { getStorage } from 'firebase/storage'
-import { getAnalytics } from 'firebase/analytics'
+// Firebase CDN을 사용하여 로드
+const { initializeApp, getAuth, getFirestore, getStorage } = window.firebase || {}
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyD21yu4QQGqsNCivB5AWAOk7ubaTHaTCzo",
@@ -15,12 +12,19 @@ const firebaseConfig = {
   measurementId: "G-VEVPWZ9HBQ"
 }
 
-// Firebase 초기화
-const app = initializeApp(firebaseConfig)
+// Firebase 초기화 (CDN이 로드된 경우에만)
+let app = null
+let auth = null
+let db = null
+let storage = null
+
+if (initializeApp && getAuth && getFirestore && getStorage) {
+  app = initializeApp(firebaseConfig)
+  auth = getAuth(app)
+  db = getFirestore(app)
+  storage = getStorage(app)
+}
 
 // Firebase 서비스들 export
-export const auth = getAuth(app)
-export const db = getFirestore(app)
-export const storage = getStorage(app)
-export const analytics = getAnalytics(app)
+export { auth, db, storage }
 export default app
