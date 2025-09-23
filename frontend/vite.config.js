@@ -9,6 +9,11 @@ export default defineConfig({
     open: true
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    rollupOptions: {
+      external: (id) => {
+        return id.startsWith('https://www.gstatic.com/firebasejs/')
+      }
+    }
   }
 })
