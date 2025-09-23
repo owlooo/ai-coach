@@ -9,14 +9,6 @@ export default defineConfig({
     open: true
   },
   build: {
-    outDir: 'dist',
-    sourcemap: false,
-    minify: 'terser'
-  },
-  optimizeDeps: {
-    include: ['react', 'react-dom']
-  },
-  define: {
-    global: 'globalThis'
+    outDir: 'dist'
   }
 })
