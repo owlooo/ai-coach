@@ -6,7 +6,7 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged 
-} from 'firebase/auth'
+} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js'
 import { auth } from '../lib/firebase'
 
 const AuthContext = createContext({})

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { BarChart3, TrendingUp, Target, Award } from 'lucide-react'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js'
 import { db } from '../lib/firebase'
 
 const Results = () => {

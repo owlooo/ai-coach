@@ -4,7 +4,7 @@ import {
   getDownloadURL, 
   deleteObject,
   getMetadata 
-} from 'firebase/storage'
+} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js'
 import { storage } from './firebase'
 
 export const storageService = {

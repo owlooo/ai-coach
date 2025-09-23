@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Calendar, Clock, BarChart3, Download, Eye } from 'lucide-react'
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
+import { collection, query, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 

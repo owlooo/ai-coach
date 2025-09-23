@@ -12,7 +12,7 @@ import {
   orderBy, 
   limit,
   serverTimestamp 
-} from 'firebase/firestore'
+} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js'
 import { db } from './firebase'
 
 // 컬렉션 참조들

@@ -15,7 +15,7 @@ import {
   Wrench,
   FileCheck
 } from 'lucide-react'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 
