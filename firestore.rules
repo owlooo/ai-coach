@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 면접 기록 컬렉션
+    match /interviews/{document} {
+      allow read, write: if true; // 개발 중에는 모든 접근 허용
+    }
+    
+    // 자기소개서 분석 기록 컬렉션
+    match /resumes/{document} {
+      allow read, write: if true; // 개발 중에는 모든 접근 허용
+    }
+    
+    // 사용자 데이터 컬렉션
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

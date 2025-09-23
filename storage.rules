@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 자기소개서 PDF 파일 저장
+    match /resumes/{allPaths=**} {
+      allow read, write: if true; // 개발 중에는 모든 접근 허용
+    }
+    
+    // 면접 녹음 파일 저장
+    match /interviews/{allPaths=**} {
+      allow read, write: if true; // 개발 중에는 모든 접근 허용
+    }
+  }
+}
