@@ -136,7 +136,7 @@ const InterviewSimulation = () => {
   // 자기소개서 확인
   const checkResumeExists = useCallback(async () => {
     try {
-      const { collection, query, orderBy, limit, getDocs } = await import('firebase/firestore')
+      const { collection, query, orderBy, limit, getDocs } = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js')
       const { db } = await import('../lib/firebase')
       
       const resumesQuery = query(

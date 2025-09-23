@@ -69,7 +69,7 @@ const Results = () => {
         if (userId) {
           console.log('Firebase에서 사용자의 최신 면접 기록 조회 중...')
           try {
-            const { collection, query, orderBy, limit, getDocs } = await import('firebase/firestore')
+            const { collection, query, orderBy, limit, getDocs } = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js')
             const { db } = await import('../lib/firebase')
             
             const interviewsQuery = query(
