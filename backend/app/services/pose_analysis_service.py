@@ -59,17 +59,22 @@ class PoseAnalysisService:
         self.HEAD_OFF_CONSEC = 3
 
     def _load_model(self):
-        """YOLO 모델 로드"""
-        try:
-            model_path = Path(__file__).parent.parent.parent / self.model_path
-            if model_path.exists():
-                self.model = YOLO(str(model_path))
-            else:
-                # 모델이 없으면 다운로드
-                self.model = YOLO(self.model_path)
-            print(f"YOLO 모델 로드 완료: {self.model_path}")
-        except Exception as e:
-            print(f"YOLO 모델 로드 실패: {e}")
+        """YOLO 모델 조건부 로드 (Vercel 등에서 비활성화 가능)"""
+        # 환경 변수로 YOLO 모델 활성화/비활성화 제어
+        if os.getenv('ENABLE_YOLO', 'true').lower() == 'true':
+            try:
+                model_path = Path(__file__).parent.parent.parent / self.model_path
+                if model_path.exists():
+                    self.model = YOLO(str(model_path))
+                else:
+                    # 모델이 없으면 다운로드
+                    self.model = YOLO(self.model_path)
+                print(f"YOLO 모델 로드 완료: {self.model_path}")
+            except Exception as e:
+                print(f"YOLO 모델 로드 실패: {e}")
+                self.model = None
+        else:
+            print("YOLO 모델 비활성화됨 (ENABLE_YOLO=false)")
             self.model = None
 
     def distance(self, a, b):
