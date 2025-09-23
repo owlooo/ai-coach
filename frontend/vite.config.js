@@ -16,7 +16,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          firebase: ['firebase'],
           ui: ['lucide-react', 'recharts'],
           utils: ['axios', 'react-router-dom']
         }
@@ -30,6 +29,6 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'firebase', 'lucide-react']
+    include: ['react', 'react-dom', 'lucide-react']
   }
 })
