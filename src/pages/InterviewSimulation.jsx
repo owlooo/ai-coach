@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { interviewService } from '../lib/database'
 import { storageService } from '../lib/storage'
 import Webcam from 'react-webcam'
+import PoseAnalysis from '../components/PoseAnalysis'
 import { 
   Mic, 
   MicOff, 
@@ -26,9 +27,18 @@ const InterviewSimulation = () => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [behaviorData, setBehaviorData] = useState({ awayCount: 0, eyeContactLoss: 0 })
+  const [poseAnalysisData, setPoseAnalysisData] = useState({
+    headMovement: 0,
+    handGestures: 0,
+    torsoMovement: 0,
+    legMovement: 0,
+    feedback: []
+  })
   const [interviewData, setInterviewData] = useState([])
   const [currentInterviewId, setCurrentInterviewId] = useState(null)
   const [error, setError] = useState('')
+  const [questions, setQuestions] = useState([])
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false)
   
   const webcamRef = useRef(null)
   const mediaRecorderRef = useRef(null)
@@ -37,33 +47,104 @@ const InterviewSimulation = () => {
   
   const navigate = useNavigate()
 
-  // 모의 질문 데이터
-  const mockQuestions = [
+  // 기본 질문 데이터 (자기소개서 기반 질문이 없을 때 사용)
+  const defaultQuestions = [
     {
       id: 1,
       category: '직무',
-      question: 'React와 Node.js를 사용한 프로젝트에서 가장 어려웠던 점은 무엇이었나요?',
-      difficulty: 'medium'
-    },
-    {
-      id: 2,
-      category: '경험',
-      question: '삼성전자 인턴십에서 배운 가장 중요한 것은 무엇인가요?',
+      question: '자기소개를 해주세요',
       difficulty: 'easy'
     },
     {
+      id: 2,
+      category: '동기',
+      question: '지원하신 직무에 대한 동기를 말씀해주세요',
+      difficulty: 'medium'
+    },
+    {
       id: 3,
-      category: '가치관',
-      question: '개발자로서 추구하는 가치는 무엇인가요?',
+      category: '경험',
+      question: '가장 성공적이었던 프로젝트 경험에 대해 설명해주세요',
       difficulty: 'medium'
     },
     {
       id: 4,
-      category: '압박',
-      question: '프로젝트 마감일이 다가왔는데 예상보다 많은 버그가 발견되었다면 어떻게 대처하시겠나요?',
+      category: '팀워크',
+      question: '팀워크를 발휘했던 경험을 말씀해주세요',
+      difficulty: 'medium'
+    },
+    {
+      id: 5,
+      category: '문제해결',
+      question: '어려운 상황을 어떻게 극복하셨는지 예시를 들어 설명해주세요',
       difficulty: 'hard'
     }
   ]
+
+  // 자기소개서 기반 질문 생성
+  const generateQuestions = async () => {
+    if (!user) return defaultQuestions
+
+    setIsLoadingQuestions(true)
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+      const response = await fetch(`${API_BASE_URL}/api/questions/generate-questions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.uid,
+          question_count: 5
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('질문 생성 실패')
+      }
+
+      const result = await response.json()
+      
+      if (result.success && result.data.questions) {
+        // AI가 생성한 질문을 적절한 형태로 변환
+        const generatedQuestions = result.data.questions.map((question, index) => ({
+          id: index + 1,
+          category: getCategoryFromQuestion(question),
+          question: question,
+          difficulty: getDifficultyFromQuestion(question),
+          isResumeBased: result.data.is_resume_based
+        }))
+        
+        return generatedQuestions
+      } else {
+        console.warn('질문 생성 실패, 기본 질문 사용:', result)
+        return defaultQuestions
+      }
+    } catch (error) {
+      console.error('질문 생성 오류:', error)
+      return defaultQuestions
+    } finally {
+      setIsLoadingQuestions(false)
+    }
+  }
+
+  // 질문에서 카테고리 추출
+  const getCategoryFromQuestion = (question) => {
+    if (question.includes('자기소개') || question.includes('소개')) return '자기소개'
+    if (question.includes('동기') || question.includes('지원')) return '동기'
+    if (question.includes('경험') || question.includes('프로젝트') || question.includes('성과')) return '경험'
+    if (question.includes('팀') || question.includes('협업')) return '팀워크'
+    if (question.includes('문제') || question.includes('어려움') || question.includes('극복')) return '문제해결'
+    if (question.includes('가치') || question.includes('철학')) return '가치관'
+    return '기타'
+  }
+
+  // 질문에서 난이도 추출
+  const getDifficultyFromQuestion = (question) => {
+    if (question.includes('어려움') || question.includes('극복') || question.includes('문제')) return 'hard'
+    if (question.includes('자기소개') || question.includes('소개')) return 'easy'
+    return 'medium'
+  }
 
   const startInterview = async () => {
     if (!user) return
@@ -72,15 +153,34 @@ const InterviewSimulation = () => {
     setCurrentQuestionIndex(0)
     setInterviewData([])
     setBehaviorData({ awayCount: 0, eyeContactLoss: 0 })
+    setPoseAnalysisData({
+      headMovement: 0,
+      handGestures: 0,
+      torsoMovement: 0,
+      legMovement: 0,
+      feedback: []
+    })
+    
+    // 자기소개서 기반 질문 생성
+    const generatedQuestions = await generateQuestions()
+    setQuestions(generatedQuestions)
     
     // 면접 세션 생성 및 저장
     const interviewSession = {
       status: 'in_progress',
-      totalQuestions: mockQuestions.length,
+      totalQuestions: generatedQuestions.length,
       currentQuestion: 0,
       startTime: new Date().toISOString(),
       behaviorData: { awayCount: 0, eyeContactLoss: 0 },
-      answers: []
+      poseAnalysisData: {
+        headMovement: 0,
+        handGestures: 0,
+        torsoMovement: 0,
+        legMovement: 0,
+        feedback: []
+      },
+      answers: [],
+      questions: generatedQuestions
     }
 
     const result = await interviewService.saveInterviewSession(user.uid, interviewSession)
@@ -228,7 +328,7 @@ const InterviewSimulation = () => {
       })
       
       // 다음 질문으로 이동
-      if (currentQuestionIndex < mockQuestions.length - 1) {
+      if (currentQuestionIndex < questions.length - 1) {
         setCurrentQuestionIndex(prev => prev + 1)
       } else {
         // 면접 완료
@@ -258,6 +358,7 @@ const InterviewSimulation = () => {
           endTime: new Date().toISOString(),
           totalScore,
           behaviorData,
+          poseAnalysisData,
           answers: interviewData
         })
       } catch (error) {
@@ -270,14 +371,16 @@ const InterviewSimulation = () => {
       state: { 
         interviewData, 
         behaviorData,
-        totalQuestions: mockQuestions.length,
-        interviewId: currentInterviewId
+        poseAnalysisData,
+        totalQuestions: questions.length,
+        interviewId: currentInterviewId,
+        questions: questions
       } 
     })
   }
 
   const nextQuestion = () => {
-    if (currentQuestionIndex < mockQuestions.length - 1) {
+    if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1)
     } else {
       finishInterview()
@@ -293,7 +396,7 @@ const InterviewSimulation = () => {
     }
   }, [])
 
-  const currentQuestion = mockQuestions[currentQuestionIndex]
+  const currentQuestion = questions[currentQuestionIndex] || defaultQuestions[currentQuestionIndex]
 
   return (
     <div className="space-y-8">
@@ -317,7 +420,7 @@ const InterviewSimulation = () => {
                 면접 준비가 완료되었습니다
               </h2>
               <p className="text-gray-600 mb-4">
-                총 {mockQuestions.length}개의 질문으로 구성된 면접을 시작합니다
+                총 {questions.length || defaultQuestions.length}개의 질문으로 구성된 면접을 시작합니다
               </p>
             </div>
 
@@ -333,9 +436,17 @@ const InterviewSimulation = () => {
 
             <button
               onClick={startInterview}
-              className="btn-primary text-lg px-8 py-3"
+              disabled={isLoadingQuestions}
+              className="btn-primary text-lg px-8 py-3 disabled:opacity-50"
             >
-              면접 시작하기
+              {isLoadingQuestions ? (
+                <>
+                  <Loader className="mr-2 h-5 w-5 animate-spin" />
+                  질문 생성 중...
+                </>
+              ) : (
+                '면접 시작하기'
+              )}
             </button>
           </div>
         </div>
@@ -348,7 +459,7 @@ const InterviewSimulation = () => {
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">
-                  질문 {currentQuestionIndex + 1} / {mockQuestions.length}
+                  질문 {currentQuestionIndex + 1} / {questions.length || defaultQuestions.length}
                 </h2>
                 <div className="flex items-center space-x-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -368,7 +479,7 @@ const InterviewSimulation = () => {
               <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
                 <div 
                   className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${((currentQuestionIndex + 1) / mockQuestions.length) * 100}%` }}
+                  style={{ width: `${((currentQuestionIndex + 1) / (questions.length || defaultQuestions.length)) * 100}%` }}
                 ></div>
               </div>
 
@@ -470,9 +581,17 @@ const InterviewSimulation = () => {
 
           {/* 사이드바 */}
           <div className="space-y-6">
-            {/* 행동 분석 */}
+            {/* 실시간 포즈 분석 */}
             <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">행동 분석</h3>
+              <PoseAnalysis 
+                onAnalysisResult={setPoseAnalysisData}
+                isActive={isInterviewStarted}
+              />
+            </div>
+
+            {/* 기존 행동 분석 (호환성 유지) */}
+            <div className="card">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">기본 행동 분석</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">자리 비움</span>

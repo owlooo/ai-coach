@@ -33,6 +33,7 @@ const Results = () => {
   const navigate = useNavigate()
   const [interviewData, setInterviewData] = useState([])
   const [behaviorData, setBehaviorData] = useState({})
+  const [poseAnalysisData, setPoseAnalysisData] = useState({})
   const [totalQuestions, setTotalQuestions] = useState(0)
   const [overallScore, setOverallScore] = useState(0)
 
@@ -40,6 +41,7 @@ const Results = () => {
     if (location.state) {
       setInterviewData(location.state.interviewData || [])
       setBehaviorData(location.state.behaviorData || {})
+      setPoseAnalysisData(location.state.poseAnalysisData || {})
       setTotalQuestions(location.state.totalQuestions || 0)
       
       // 전체 점수 계산
@@ -86,6 +88,13 @@ const Results = () => {
       
       setInterviewData(mockData)
       setBehaviorData({ awayCount: 3, eyeContactLoss: 7 })
+      setPoseAnalysisData({ 
+        headMovement: 2, 
+        handGestures: 1, 
+        torsoMovement: 3, 
+        legMovement: 1,
+        feedback: ["고개 움직임이 자주 감지되었습니다.", "상체 움직임이 감지되었습니다."]
+      })
       setTotalQuestions(4)
       setOverallScore(81)
     }
@@ -303,14 +312,127 @@ const Results = () => {
                   </div>
                 </div>
               </div>
+
+              {/* 영상 및 오디오 파일 링크 - 데이터가 있을 경우에만 표시 */}
+              {(item.videoURL || item.audioURL) && (
+                <div className="bg-blue-50 rounded-lg p-4 mt-4">
+                  <div className="flex items-start space-x-2">
+                    <Mic className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900 mb-2">녹화 파일</div>
+                      <div className="space-y-2">
+                        {item.videoURL && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-600">영상:</span>
+                            <a 
+                              href={item.videoURL} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-800 underline truncate"
+                            >
+                              면접 영상 보기
+                            </a>
+                          </div>
+                        )}
+                        {item.audioURL && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-600">오디오:</span>
+                            <a 
+                              href={item.audioURL} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-800 underline truncate"
+                            >
+                              음성 파일 듣기
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* 행동 분석 결과 */}
+      {/* 포즈 분석 결과 */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">행동 분석 결과</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">AI 포즈 분석 결과</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-red-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Eye className="h-5 w-5 text-red-600" />
+              <h4 className="font-semibold text-gray-900">고개 과도 회전</h4>
+            </div>
+            <div className="text-2xl font-bold text-red-600 mb-1">
+              {poseAnalysisData.headMovement || 0}회
+            </div>
+            <p className="text-xs text-gray-600">
+              면접관과의 시선 교환
+            </p>
+          </div>
+          
+          <div className="bg-yellow-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Hand className="h-5 w-5 text-yellow-600" />
+              <h4 className="font-semibold text-gray-900">과도한 손짓</h4>
+            </div>
+            <div className="text-2xl font-bold text-yellow-600 mb-1">
+              {poseAnalysisData.handGestures || 0}회
+            </div>
+            <p className="text-xs text-gray-600">
+              어깨 위로 올라간 손동작
+            </p>
+          </div>
+          
+          <div className="bg-blue-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <User className="h-5 w-5 text-blue-600" />
+              <h4 className="font-semibold text-gray-900">상반신 흔들림</h4>
+            </div>
+            <div className="text-2xl font-bold text-blue-600 mb-1">
+              {poseAnalysisData.torsoMovement || 0}회
+            </div>
+            <p className="text-xs text-gray-600">
+              어깨와 엉덩이 중심점 변화
+            </p>
+          </div>
+          
+          <div className="bg-green-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Activity className="h-5 w-5 text-green-600" />
+              <h4 className="font-semibold text-gray-900">다리 움직임</h4>
+            </div>
+            <div className="text-2xl font-bold text-green-600 mb-1">
+              {poseAnalysisData.legMovement || 0}회
+            </div>
+            <p className="text-xs text-gray-600">
+              하반신 키포인트 움직임
+            </p>
+          </div>
+        </div>
+
+        {/* AI 피드백 */}
+        {poseAnalysisData.feedback && poseAnalysisData.feedback.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-medium text-blue-900 mb-2">AI 분석 피드백</h4>
+            <div className="space-y-1">
+              {poseAnalysisData.feedback.map((feedback, index) => (
+                <div key={index} className="text-sm text-blue-800 flex items-start space-x-2">
+                  <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <span>{feedback}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 기존 행동 분석 결과 (호환성 유지) */}
+      <div className="card">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">기본 행동 분석 결과</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-orange-50 rounded-lg p-6">
             <div className="flex items-center space-x-3 mb-2">

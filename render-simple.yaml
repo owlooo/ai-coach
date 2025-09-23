@@ -1,0 +1,23 @@
+services:
+  # 백엔드만 배포 (간단한 버전)
+  - type: web
+    name: ai-interview-coach-api
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn app.main:app -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHONPATH
+        value: /opt/render/project/src/backend
+      - key: DEBUG
+        value: False
+      - key: OPENAI_API_KEY
+        fromService:
+          type: secret
+          name: openai-api-key
+      - key: FIREBASE_STORAGE_BUCKET
+        fromService:
+          type: secret
+          name: firebase-storage-bucket
+      - key: ALLOWED_ORIGINS
+        value: '["*"]'  # 개발용으로 모든 origin 허용

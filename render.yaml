@@ -1,0 +1,61 @@
+services:
+  # 백엔드 서비스
+  - type: web
+    name: ai-interview-coach-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHONPATH
+        value: /opt/render/project/src/backend
+      - key: DEBUG
+        value: False
+      - key: OPENAI_API_KEY
+        fromService:
+          type: secret
+          name: openai-api-key
+      - key: FIREBASE_STORAGE_BUCKET
+        fromService:
+          type: secret
+          name: firebase-storage-bucket
+      - key: ALLOWED_ORIGINS
+        value: '["https://ai-interview-coach-frontend.onrender.com"]'
+
+  # 프론트엔드 서비스
+  - type: web
+    name: ai-interview-coach-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://ai-interview-coach-backend.onrender.com
+      - key: VITE_FIREBASE_API_KEY
+        fromService:
+          type: secret
+          name: firebase-api-key
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        fromService:
+          type: secret
+          name: firebase-auth-domain
+      - key: VITE_FIREBASE_PROJECT_ID
+        fromService:
+          type: secret
+          name: firebase-project-id
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        fromService:
+          type: secret
+          name: firebase-storage-bucket
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        fromService:
+          type: secret
+          name: firebase-messaging-sender-id
+      - key: VITE_FIREBASE_APP_ID
+        fromService:
+          type: secret
+          name: firebase-app-id
+
+databases:
+  - name: ai-interview-coach-db
+    plan: free

@@ -1,7 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
+import time
+import os
 from dotenv import load_dotenv
 
 from app.routes import resume, interview, questions, behavior
@@ -18,18 +22,36 @@ app = FastAPI(
     title="AI Interview Coach API",
     description="AI 면접 코치 서비스 백엔드 API",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None
 )
 
-# CORS 설정
+# 압축 미들웨어 추가
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# CORS 설정 - 보안 강화
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    max_age=3600,  # 1시간 캐시
 )
+
+# 요청 처리 시간 측정 미들웨어
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    return response
+
+# 정적 파일 서빙 (업로드된 파일들)
+if os.path.exists("uploads"):
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # 라우터 등록
 app.include_router(resume.router, prefix="/api/resume", tags=["resume"])

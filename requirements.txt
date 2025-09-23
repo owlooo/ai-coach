@@ -1,3 +1,6 @@
+# Render 배포용 통합 requirements.txt
+# 백엔드 requirements.txt 내용을 복사
+
 # FastAPI 및 웹 서버
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
