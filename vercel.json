@@ -1,18 +1,11 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "backend/app/main.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+  "functions": {
+    "backend/app/main.py": {
+      "runtime": "python3.9",
+      "maxDuration": 30
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
@@ -30,10 +23,5 @@
     "FIREBASE_STORAGE_BUCKET": "@firebase_storage_bucket",
     "ENABLE_YOLO": "false",
     "DEBUG": "false"
-  },
-  "functions": {
-    "backend/app/main.py": {
-      "maxDuration": 30
-    }
   }
 }
