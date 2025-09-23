@@ -18,10 +18,10 @@ opencv-python-headless==4.8.1.78
 pillow>=10.0.0
 numpy>=1.24.0,<2.0.0
 
-# 포즈 분석 및 컴퓨터 비전 - CPU 전용 버전으로 최적화
-ultralytics==8.0.196
-torch>=1.9.0,<2.0.0
-torchvision>=0.10.0,<1.0.0
+# 포즈 분석 및 컴퓨터 비전 - CPU 전용 버전으로 최적화 (Vercel 호환)
+# ultralytics==8.0.196
+# torch>=1.9.0,<2.0.0
+# torchvision>=0.10.0,<1.0.0
 
 # Firebase
 firebase-admin==6.2.0
