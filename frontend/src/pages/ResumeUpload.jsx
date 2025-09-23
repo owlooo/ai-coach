@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 const ResumeUpload = () => {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [uploadedFile, setUploadedFile] = useState(null)
   const [analysis, setAnalysis] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,13 +15,19 @@ const ResumeUpload = () => {
 
   // 사용자 ID 생성 또는 가져오기 (Firebase Auth UID만 사용)
   const getUserId = () => {
+    // 인증 로딩 중이면 null 반환
+    if (authLoading) {
+      return null
+    }
+    
     // Firebase Authentication 사용자가 있으면 해당 사용자 ID 사용
     if (user && user.uid) {
       return user.uid
     }
     
-    // 로그인하지 않은 사용자는 에러 처리
-    throw new Error('로그인이 필요합니다. 먼저 로그인해주세요.')
+    // 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
+    window.location.href = '/login'
+    return null
   }
 
   const onDrop = async (acceptedFiles) => {
@@ -87,6 +93,13 @@ const ResumeUpload = () => {
           const existingResumes = JSON.parse(localStorage.getItem('resumeHistory') || '[]')
           existingResumes.unshift(resumeRecord) // 최신 기록을 맨 위에 추가
           localStorage.setItem('resumeHistory', JSON.stringify(existingResumes))
+          
+          // 면접 시뮬레이션에서 사용할 수 있도록 최신 분석 결과를 별도로 저장
+          localStorage.setItem('lastResumeAnalysis', JSON.stringify({
+            analysis: analysisData.analysis,
+            fileInfo: {...fileInfo, original_name: file.name, size: file.size, firestore_id: firestoreId, analyzedAt: analyzedAt}
+          }))
+          
           console.log('자기소개서 분석 기록 저장 완료')
         } catch (error) {
           console.error('자기소개서 분석 기록 저장 실패:', error)
@@ -106,6 +119,24 @@ const ResumeUpload = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  // 인증 로딩 중일 때
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">로그인 상태를 확인하고 있습니다</h3>
+          <p className="text-gray-600 text-lg">잠시만 기다려주세요...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 사용자 ID가 없으면 (인증 실패) 아무것도 렌더링하지 않음
+  if (!getUserId()) {
+    return null
   }
 
   return (

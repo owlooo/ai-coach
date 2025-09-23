@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { BarChart3, TrendingUp, Target, Award, ArrowLeft } from 'lucide-react'
+import { BarChart3, TrendingUp, Target, Award } from 'lucide-react'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
@@ -9,19 +9,25 @@ const Results = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const params = useParams()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [interviewData, setInterviewData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // 사용자 ID 가져오기
   const getUserId = () => {
+    // 인증 로딩 중이면 null 반환
+    if (authLoading) {
+      return null
+    }
+    
     // Firebase Authentication 사용자가 있으면 해당 사용자 ID 사용
     if (user && user.uid) {
       return user.uid
     }
     
-    // 그렇지 않으면 localStorage에서 가져오거나 기본값 사용
-    return localStorage.getItem('userId') || 'anonymous'
+    // 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
+    window.location.href = '/login'
+    return null
   }
 
   // 면접 데이터 가져오기
@@ -58,35 +64,35 @@ const Results = () => {
           return
         }
         
-        // 3. localStorage에서 임시 데이터 확인
-        const tempData = localStorage.getItem('tempInterviewResult')
-        if (tempData) {
-          console.log('✅ localStorage에서 임시 데이터 로드')
-          const parsedData = JSON.parse(tempData)
-          setInterviewData(parsedData)
-          localStorage.removeItem('tempInterviewResult') // 사용 후 삭제
-          setLoading(false)
-          return
-        }
-
-        // 4. localStorage에서 면접 기록 확인
-        const interviewHistory = localStorage.getItem('interviewHistory')
-        if (interviewHistory) {
+        // 3. Firebase에서 사용자의 최신 면접 기록 확인
+        const userId = getUserId()
+        if (userId) {
+          console.log('Firebase에서 사용자의 최신 면접 기록 조회 중...')
           try {
-            const history = JSON.parse(interviewHistory)
-            if (history.length > 0) {
-              console.log('✅ localStorage에서 최신 면접 기록 로드')
-              setInterviewData(history[0])
+            const { collection, query, orderBy, limit, getDocs } = await import('firebase/firestore')
+            const { db } = await import('../lib/firebase')
+            
+            const interviewsQuery = query(
+              collection(db, 'users', userId, 'interviews'),
+              orderBy('completedAt', 'desc'),
+              limit(1)
+            )
+            const interviewsSnapshot = await getDocs(interviewsQuery)
+            
+            if (!interviewsSnapshot.empty) {
+              const latestInterview = interviewsSnapshot.docs[0].data()
+              console.log('✅ Firebase에서 최신 면접 기록 로드:', latestInterview)
+              setInterviewData(latestInterview)
               setLoading(false)
               return
             }
           } catch (e) {
-            console.error('면접 기록 파싱 실패:', e)
+            console.error('Firebase 면접 기록 조회 실패:', e)
           }
         }
 
-        // 5. 데이터가 없으면 기본값 설정
-        console.log('❌ 면접 데이터를 찾을 수 없음 - 기본값 설정')
+        // 4. 데이터가 없으면 기본값 설정
+        console.log('❌ Firebase에서 면접 데이터를 찾을 수 없음 - 기본값 설정')
         setInterviewData({
           answers: [],
           questions: [],
@@ -143,15 +149,22 @@ const Results = () => {
     loadInterviewData()
   }, [params.interviewId, location.state])
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">면접 결과를 불러오는 중...</p>
+          <p className="text-gray-600">
+            {authLoading ? '로그인 상태를 확인하고 있습니다...' : '면접 결과를 불러오는 중...'}
+          </p>
         </div>
       </div>
     )
+  }
+
+  // 사용자 ID가 없으면 (인증 실패) 아무것도 렌더링하지 않음
+  if (!getUserId()) {
+    return null
   }
 
   if (!interviewData) {
@@ -184,23 +197,30 @@ const Results = () => {
     logic: 7,
     starMethod: 7
   }
+
+  const scoreExplanations = evaluation?.scoreExplanations || {
+    specificity: `구체성 ${scores.specificity}점 - 기본 평가 기준에 따라 구체적인 사례와 데이터를 포함한 답변을 평가했습니다.`,
+    jobRelevance: `직무적합성 ${scores.jobRelevance}점 - 기본 평가 기준에 따라 지원 직무와의 연관성을 평가했습니다.`,
+    logic: `논리성 ${scores.logic}점 - 기본 평가 기준에 따라 논리적 흐름과 근거의 일치성을 평가했습니다.`,
+    starMethod: `STAR 기법 ${scores.starMethod}점 - 기본 평가 기준에 따라 Situation, Task, Action, Result 구조 활용도를 평가했습니다.`
+  }
   console.log('scores:', scores)
 
   const overallScore = evaluation?.overallScore || Math.round(
     (scores.specificity + scores.jobRelevance + scores.logic + scores.starMethod) / 4
   )
+  const overallRating = evaluation?.overallRating || 
+    (overallScore >= 9.0 ? "매우 잘했어요" :
+     overallScore >= 7.0 ? "잘했어요" :
+     overallScore >= 5.0 ? "보통이에요" :
+     overallScore >= 3.0 ? "아쉬워요" : "못했어요")
+  
   console.log('overallScore:', overallScore)
+  console.log('overallRating:', overallRating)
 
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="btn-secondary mb-4 flex items-center mx-auto"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          대시보드로 돌아가기
-        </button>
         <h1 className="text-3xl font-bold text-gray-900 mb-4">면접 결과 리포트</h1>
         <p className="text-lg text-gray-600">면접 성과를 상세히 분석해보세요</p>
         <p className="text-sm text-gray-500 mt-2">
@@ -230,7 +250,8 @@ const Results = () => {
             <span className="text-white text-2xl font-bold">{overallScore}</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">종합 점수</h2>
-          <p className="text-gray-600">100점 만점</p>
+          <p className="text-gray-600 mb-2">10점 만점</p>
+          <div className="text-lg font-semibold text-gray-800 mb-2">{overallRating}</div>
           {interviewData.error && (
             <p className="text-sm text-red-600 mt-2">※ 기본 점수입니다</p>
           )}
@@ -306,44 +327,56 @@ const Results = () => {
         </div>
       </div>
 
-      {/* 답변 목록 */}
-      {interviewData.answers.length > 0 ? (
-        <div className="max-w-4xl mx-auto">
-          <div className="card">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">면접 답변 목록</h3>
+      {/* 점수 책정 이유 */}
+      <div className="max-w-4xl mx-auto">
+        <div className="card">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">점수 책정 이유</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              {interviewData.answers.map((answer, index) => (
-                <div key={index} className="border-l-4 border-primary-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">
-                    질문 {answer.questionIndex + 1}: {answer.question}
-                  </h4>
-                  <p className="text-gray-700 mb-2">{answer.answer}</p>
-                  <p className="text-sm text-gray-500">
-                    답변 시간: {new Date(answer.timestamp).toLocaleString('ko-KR')}
-                  </p>
+              <div className="bg-blue-50 p-4 rounded-lg h-32 flex flex-col">
+                <div className="flex items-center space-x-3 mb-2">
+                  <Target className="w-5 h-5 text-blue-600" />
+                  <h4 className="font-semibold text-gray-900">구체성</h4>
                 </div>
-              ))}
+                <p className="text-sm text-gray-700 flex-1 overflow-hidden">{scoreExplanations.specificity}</p>
+              </div>
+              
+              <div className="bg-purple-50 p-4 rounded-lg h-32 flex flex-col">
+                <div className="flex items-center space-x-3 mb-2">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                  <h4 className="font-semibold text-gray-900">논리성</h4>
+                </div>
+                <p className="text-sm text-gray-700 flex-1 overflow-hidden">{scoreExplanations.logic}</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-green-50 p-4 rounded-lg h-32 flex flex-col">
+                <div className="flex items-center space-x-3 mb-2">
+                  <Award className="w-5 h-5 text-green-600" />
+                  <h4 className="font-semibold text-gray-900">직무적합성</h4>
+                </div>
+                <p className="text-sm text-gray-700 flex-1 overflow-hidden">{scoreExplanations.jobRelevance}</p>
+              </div>
+              
+              <div className="bg-orange-50 p-4 rounded-lg h-32 flex flex-col">
+                <div className="flex items-center space-x-3 mb-2">
+                  <TrendingUp className="w-5 h-5 text-orange-600" />
+                  <h4 className="font-semibold text-gray-900">STAR 기법</h4>
+                </div>
+                <p className="text-sm text-gray-700 flex-1 overflow-hidden">{scoreExplanations.starMethod}</p>
+              </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="max-w-4xl mx-auto">
-          <div className="card">
-            <div className="text-center py-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">답변 데이터가 없습니다</h3>
-              <p className="text-gray-600 mb-4">
-                면접 시뮬레이션에서 답변을 입력하지 않았거나 오류가 발생했습니다.
+          {interviewData.error && (
+            <div className="mt-4 bg-yellow-50 p-3 rounded-lg">
+              <p className="text-yellow-800 text-sm">
+                💡 기본 점수 설명입니다. 정확한 AI 평가를 위해서는 면접을 다시 진행해주세요.
               </p>
-              <button
-                onClick={() => navigate('/interview')}
-                className="btn-primary"
-              >
-                면접 다시 시작하기
-              </button>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* AI 평가 결과 */}
       {evaluation?.evaluations && evaluation.evaluations.length > 0 ? (
@@ -392,43 +425,43 @@ const Results = () => {
       {/* 피드백 */}
       <div className="max-w-4xl mx-auto">
         <div className="card">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">상세 피드백</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-6">면접결과</h3>
           <div className="space-y-6">
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2">💡 강점</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">👍 좋았던점</h4>
               <ul className="text-gray-700 space-y-1">
                 {(evaluation?.feedback?.strengths || [
                   "구체적인 사례와 데이터를 잘 제시했습니다",
                   "논리적이고 체계적인 답변 구조를 보여주었습니다",
                   "직무와의 연관성을 명확히 드러냈습니다"
                 ]).map((strength, index) => (
-                  <li key={index}>• {strength}</li>
+                  <li key={index}>• {typeof strength === 'string' ? strength : JSON.stringify(strength)}</li>
                 ))}
               </ul>
             </div>
             
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2">🔧 개선 사항</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">😔 아쉬웠던점</h4>
               <ul className="text-gray-700 space-y-1">
                 {(evaluation?.feedback?.improvements || [
                   "STAR 기법을 더 체계적으로 활용해보세요",
                   "결과(Result) 부분을 더 구체적으로 설명하세요",
                   "개인적 성장과 학습 과정을 강조해보세요"
                 ]).map((improvement, index) => (
-                  <li key={index}>• {improvement}</li>
+                  <li key={index}>• {typeof improvement === 'string' ? improvement : JSON.stringify(improvement)}</li>
                 ))}
               </ul>
             </div>
             
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2">📈 다음 단계</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">🎯 개선방향</h4>
               <ul className="text-gray-700 space-y-1">
                 {(evaluation?.feedback?.nextSteps || [
                   "더 많은 면접 연습을 통해 자신감을 키우세요",
                   "다양한 상황별 답변을 준비해보세요",
                   "피드백을 바탕으로 자기소개서를 개선해보세요"
                 ]).map((step, index) => (
-                  <li key={index}>• {step}</li>
+                  <li key={index}>• {typeof step === 'string' ? step : JSON.stringify(step)}</li>
                 ))}
               </ul>
             </div>

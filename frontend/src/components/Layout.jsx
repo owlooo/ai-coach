@@ -12,14 +12,14 @@ import {
 } from 'lucide-react'
 
 const Layout = ({ children }) => {
-  const { user, signOut } = useAuth()
+  const { user, loading: authLoading, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   
   // 사용자 정보 확인 (디버깅용)
   useEffect(() => {
-    console.log('Layout - 사용자 정보:', { user, email: user?.email, uid: user?.uid })
-  }, [user])
+    console.log('Layout - 사용자 정보:', { user, email: user?.email, uid: user?.uid, authLoading })
+  }, [user, authLoading])
 
   const handleSignOut = async () => {
     await signOut()
@@ -34,12 +34,25 @@ const Layout = ({ children }) => {
     { name: '이전 기록', href: '/history', icon: History },
   ]
 
-  // 사용자가 로그인하지 않았으면 로그인 페이지로 리다이렉트
+  // 사용자가 로그인하지 않았으면 로그인 페이지로 리다이렉트 (인증 로딩 완료 후에만)
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       navigate('/login')
     }
-  }, [user, navigate])
+  }, [user, authLoading, navigate])
+
+  // 인증 로딩 중이거나 사용자가 없으면 로딩 화면 표시
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">로그인 상태를 확인하고 있습니다</h3>
+          <p className="text-gray-600 text-lg">잠시만 기다려주세요...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!user) {
     return null

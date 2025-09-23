@@ -142,9 +142,8 @@ export const interviewService = {
       // 새로운 통계 계산
       const newStats = {
         totalInterviews: stats.totalInterviews + 1,
-        averageScore: sessionData.finalScore ? 
-          Math.round(((stats.averageScore * stats.totalInterviews) + sessionData.finalScore) / (stats.totalInterviews + 1)) : 
-          stats.averageScore,
+        highestScore: sessionData.finalScore && sessionData.finalScore > stats.highestScore ? 
+          sessionData.finalScore : stats.highestScore,
         totalQuestions: stats.totalQuestions + (sessionData.questions?.length || 0),
         improvementCount: sessionData.improvementCount || stats.improvementCount
       }
@@ -267,7 +266,7 @@ export const statsService = {
       const userDocRef = doc(db, 'users', userId)
       const sampleStats = {
         totalInterviews: 3,
-        averageScore: 85,
+        highestScore: 92,
         totalResumes: 2,
         totalQuestions: 15,
         improvementCount: 5,
@@ -285,41 +284,66 @@ export const statsService = {
   
   async getUserStats(userId) {
     try {
-      // 사용자 문서에서 통계 데이터 가져오기
-      const userDocRef = doc(db, 'users', userId)
-      const userDoc = await getDoc(userDocRef)
+      console.log('=== 통계 조회 시작 ===')
+      console.log('사용자 ID:', userId)
       
-      if (userDoc.exists()) {
-        const userData = userDoc.data()
-        return {
-          data: {
-            totalInterviews: userData.totalInterviews || 0,
-            averageScore: userData.averageScore || 0,
-            totalResumes: userData.totalResumes || 0,
-            totalQuestions: userData.totalQuestions || 0,
-            improvementCount: userData.improvementCount || 0
-          },
-          error: null
+      // 면접 데이터에서 실제 통계 계산
+      const interviewsCollection = collection(db, 'users', userId, 'interviews')
+      const interviewsQuery = query(interviewsCollection, orderBy('completedAt', 'desc'))
+      const interviewsSnapshot = await getDocs(interviewsQuery)
+      
+      // 자기소개서 데이터 조회
+      const resumesCollection = collection(db, 'users', userId, 'resumes')
+      const resumesSnapshot = await getDocs(resumesCollection)
+      
+      let totalInterviews = 0
+      let totalQuestions = 0
+      let highestScore = 0
+      
+      // 면접 데이터 분석
+      interviewsSnapshot.docs.forEach(doc => {
+        const interviewData = doc.data()
+        totalInterviews++
+        
+        // 질문 수 계산
+        if (interviewData.questions && Array.isArray(interviewData.questions)) {
+          totalQuestions += interviewData.questions.length
         }
-      } else {
-        // 사용자 문서가 없으면 기본값 반환
-        return {
-          data: {
-            totalInterviews: 0,
-            averageScore: 0,
-            totalResumes: 0,
-            totalQuestions: 0,
-            improvementCount: 0
-          },
-          error: null
+        
+        // 최고 점수 계산
+        let currentScore = 0
+        if (interviewData.evaluation?.data?.overallScore) {
+          currentScore = interviewData.evaluation.data.overallScore
+        } else if (interviewData.evaluation?.overallScore) {
+          currentScore = interviewData.evaluation.overallScore
         }
+        
+        if (currentScore > highestScore) {
+          highestScore = currentScore
+        }
+      })
+      const totalResumes = resumesSnapshot.docs.length
+      
+      const stats = {
+        totalInterviews,
+        highestScore,
+        totalResumes,
+        totalQuestions,
+        improvementCount: 0 // 개선 횟수는 별도 계산 필요시 추가
+      }
+      
+      console.log('✅ 통계 계산 완료:', stats)
+      
+      return {
+        data: stats,
+        error: null
       }
     } catch (error) {
       console.error('통계 조회 에러:', error)
       return { 
         data: {
           totalInterviews: 0,
-          averageScore: 0,
+          highestScore: 0,
           totalResumes: 0,
           totalQuestions: 0,
           improvementCount: 0

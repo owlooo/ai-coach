@@ -1,21 +1,23 @@
 import openai
 from openai import AsyncOpenAI
-from app.utils.config import get_settings
+import os
 
-settings = get_settings()
+# 환경변수 직접 설정 (설정 파일 로딩 우회)
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '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')
+OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 
 class AIService:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        self.client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     
     async def analyze_resume(self, resume_text: str) -> str:
         """자기소개서 분석"""
         try:
             # API 키가 없거나 테스트 모드일 때
-            if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "your_openai_api_key_here":
+            if not OPENAI_API_KEY or OPENAI_API_KEY == "your_openai_api_key_here":
                 return self._generate_mock_analysis(resume_text)
             response = await self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+                model=OPENAI_MODEL,
                 messages=[
                     {
                         "role": "system",
@@ -32,37 +34,55 @@ class AIService:
 점수: X/10
 분석: 자기소개서에서 제시한 직무 목표나 장기적인 목표가 얼마나 구체적이고 실현 가능한지 평가합니다
 강점: 잘 표현된 목표 설정 부분을 구체적으로 언급합니다
+예시: 실제 자기소개서에서 목표 관련 문장을 2개 인용하여 보여줍니다
 개선점: 목표가 추상적이거나 직무와의 연결성이 부족한 부분을 지적하고 개선 방안을 제시합니다
+현재 표현: 실제 자기소개서에서 추상적이거나 개선이 필요한 목표 관련 문장을 2개 인용합니다
+개선 제안: 현재 표현을 바탕으로 더 구체적이고 명확한 목표 표현 예시를 2개 제시합니다
 
 경험과 성과 강조
 점수: X/10
 분석: 경험을 어떻게 서술하고 있는지, 성과를 얼마나 잘 구체화했는지에 대한 평가입니다
 강점: 잘 서술된 경험과 성과 부분을 구체적으로 언급합니다
+예시: 실제 자기소개서에서 경험과 성과 관련 문장을 2개 인용하여 보여줍니다
 개선점: 성과를 수치적으로 표현할 수 있는 부분이나 STAR 기법을 더 잘 활용할 수 있는 부분을 제시합니다
+현재 표현: 실제 자기소개서에서 개선이 필요한 경험과 성과 관련 문장을 2개 인용합니다
+개선 제안: 현재 표현을 바탕으로 더 구체적이고 정량적인 성과 표현 예시를 2개 제시합니다
 
 문장 구조 및 가독성
 점수: X/10
 분석: 문장이 지나치게 길거나 복잡한 경우, 이를 어떻게 개선할 수 있는지에 대한 피드백을 제공합니다
 강점: 간결하고 명확한 문장 구조를 잘 활용한 부분을 언급합니다
+예시: 실제 자기소개서에서 잘 작성된 문장을 2개 인용하여 보여줍니다
 개선점: 복잡하거나 길어서 이해하기 어려운 문장을 구체적으로 지적하고 개선된 예시를 제시합니다
+현재 표현: 실제 자기소개서에서 개선이 필요한 긴 문장이나 복잡한 문장을 2개 인용합니다
+개선 제안: 현재 표현을 바탕으로 더 간결하고 명확한 문장으로 개선된 예시를 2개 제시합니다
 
 자기소개서의 흐름과 전개
 점수: X/10
 분석: 자기소개서가 일관되게 흐르고 있는지, 각 문단이 자연스럽게 이어지는지 평가합니다
 강점: 논리적이고 자연스러운 흐름을 잘 구성한 부분을 언급합니다
+예시: 실제 자기소개서에서 잘 구성된 흐름 부분을 2개 인용하여 보여줍니다
 개선점: 문단 간 연결이 부자연스럽거나 정보가 너무 집중된 부분을 지적하고 개선 방안을 제시합니다
+현재 구조: 실제 자기소개서에서 개선이 필요한 구조나 흐름 부분을 2개 인용합니다
+개선 제안: 현재 구조를 바탕으로 더 자연스럽고 논리적인 흐름으로 개선된 예시를 2개 제시합니다
 
 직무와의 관련성
 점수: X/10
 분석: 직무와의 연관성은 얼마나 잘 드러나 있는지, 자기소개서에서 직무와 본인의 경험을 연결하는 방식에 대해 평가합니다
 강점: 직무와의 연관성을 잘 드러낸 부분을 구체적으로 언급합니다
+예시: 실제 자기소개서에서 직무와 경험을 잘 연결한 부분을 2개 인용하여 보여줍니다
 개선점: 경험과 직무 연관성을 더 명확히 할 수 있는 부분을 지적하고 개선 방안을 제시합니다
+현재 표현: 실제 자기소개서에서 직무 연관성이 부족한 부분을 2개 인용합니다
+개선 제안: 현재 표현을 바탕으로 직무와의 연관성을 더 명확하게 드러내는 예시를 2개 제시합니다
 
 어조와 표현력
 점수: X/10
 분석: 자기소개서에서 사용하는 어조와 표현이 적절한지 평가합니다
 강점: 적절하고 효과적인 어조와 표현을 사용한 부분을 언급합니다
+예시: 실제 자기소개서에서 적절한 어조와 표현을 사용한 부분을 2개 인용하여 보여줍니다
 개선점: 너무 격식적이거나 가벼운 어조를 개선할 수 있는 부분을 지적하고 더 자연스러운 표현을 제시합니다
+현재 표현: 실제 자기소개서에서 개선이 필요한 어조나 표현 부분을 2개 인용합니다
+개선 제안: 현재 표현을 바탕으로 더 자연스럽고 자신감 있는 표현으로 개선된 예시를 2개 제시합니다
 
 강점과 개선점 종합 피드백
 전반적으로 잘 표현된 강점과 개선이 필요한 부분을 종합적으로 정리합니다. 추가적으로 개선할 수 있는 점을 강조합니다.
@@ -214,7 +234,7 @@ class AIService:
         """예상 면접 질문 생성"""
         try:
             response = await self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+                model=OPENAI_MODEL,
                 messages=[
                     {
                         "role": "system",
@@ -254,18 +274,18 @@ class AIService:
         """면접 답변 평가 (점수와 텍스트 포함)"""
         try:
             response = await self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+                model=OPENAI_MODEL,
                 messages=[
                     {
                         "role": "system",
                         "content": """당신은 면접 평가 전문가입니다. 주어진 질문과 답변을 바탕으로 다음 형식으로 평가하세요:
 
-1. 구체성 (Specificity): 1-10점
-2. 직무적합성 (Job Relevance): 1-10점  
-3. 논리성 (Logic): 1-10점
-4. STAR 기법 활용도 (STAR Method): 1-10점
+1. 구체성 (Specificity): 1-10점 - 구체적인 사례, 데이터, 수치가 포함되어 있는지
+2. 직무적합성 (Job Relevance): 1-10점 - 지원 직무와의 연관성, 핵심 역량 부각
+3. 논리성 (Logic): 1-10점 - 논리적 흐름, 근거와 결론의 일치성
+4. STAR 기법 활용도 (STAR Method): 1-10점 - Situation, Task, Action, Result 구조 활용
 
-각 항목에 대해 점수와 함께 구체적인 평가를 제공하세요.
+각 항목에 대해 점수와 함께 구체적인 평가 및 점수 책정 이유를 제공하세요.
 
 JSON 형식으로 응답하세요:
 {
@@ -275,7 +295,13 @@ JSON 형식으로 응답하세요:
     "logic": 9,
     "starMethod": 6
   },
-  "evaluation": "상세한 평가 텍스트"
+  "evaluation": "상세한 평가 텍스트",
+  "scoreExplanations": {
+    "specificity": "구체적인 사례와 데이터를 잘 제시했으나, 더 정량적 지표가 있으면 좋겠습니다.",
+    "jobRelevance": "지원 직무와의 연관성은 있으나, 핵심 역량 부각이 더 필요합니다.",
+    "logic": "논리적 흐름이 매우 명확하고 근거와 결론이 잘 일치합니다.",
+    "starMethod": "기본적인 구조는 갖추었으나, Action과 Result 부분을 더 구체적으로 설명하면 좋겠습니다."
+  }
 }"""
                     },
                     {
@@ -301,10 +327,10 @@ JSON 형식으로 응답하세요:
                 # JSON 파싱 실패 시 기본값 반환
                 return {
                     "scores": {
-                        "specificity": 7,
-                        "jobRelevance": 7,
-                        "logic": 7,
-                        "starMethod": 7
+                        "specificity": 0,
+                        "jobRelevance": 0,
+                        "logic": 0,
+                        "starMethod": 0
                     },
                     "evaluation": evaluation_text
                 }
@@ -322,21 +348,21 @@ JSON 형식으로 응답하세요:
             ])
             
             response = await self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+                model=OPENAI_MODEL,
                 messages=[
                     {
                         "role": "system",
-                        "content": """당신은 면접 코치입니다. 주어진 모든 답변 평가를 종합하여 다음 형식으로 피드백을 제공하세요:
+                        "content": """당신은 면접 코치입니다. 주어진 모든 답변 평가를 종합하여 면접결과를 다음 형식으로 제공하세요:
 
-강점 (strengths): 구체적인 강점 3-4개를 리스트로
-개선사항 (improvements): 각 개선점에 대해 현재 문제상황, 구체적인 개선방법, 기대효과를 포함한 상세한 개선사항 3-4개를 리스트로  
-다음단계 (nextSteps): 구체적인 행동 계획 3-4개를 리스트로
+좋았던점 (strengths): 면접에서 잘한 부분, 긍정적인 요소 3-4개를 간단한 문장으로
+아쉬웠던점 (improvements): 개선이 필요한 부분을 구체적으로 지적한 후 개선방법을 제시 3-4개를 간단한 문장으로
+개선방향 (nextSteps): 앞으로 발전시켜야 할 방향, 구체적인 행동 계획 3-4개를 간단한 문장으로
 
 JSON 형식으로 응답하세요:
 {
-  "strengths": ["강점1", "강점2", "강점3"],
-  "improvements": ["개선점1", "개선점2", "개선점3"],
-  "nextSteps": ["계획1", "계획2", "계획3"]
+  "strengths": ["좋았던점1", "좋았던점2", "좋았던점3"],
+  "improvements": ["아쉬웠던점과 개선방법1", "아쉬웠던점과 개선방법2", "아쉬웠던점과 개선방법3"],
+  "nextSteps": ["개선방향1", "개선방향2", "개선방향3"]
 }"""
                     },
                     {
@@ -360,28 +386,28 @@ JSON 형식으로 응답하세요:
             except:
                 # JSON 파싱 실패 시 기본값 반환
                 return {
-                    "strengths": ["AI 평가를 통해 구체적인 강점을 파악했습니다"],
-                    "improvements": ["AI 평가를 통해 개선점을 파악했습니다"],
-                    "nextSteps": ["AI 피드백을 바탕으로 면접 실력을 향상시켜보세요"]
+                    "strengths": ["면접에 참여해주셔서 감사합니다"],
+                    "improvements": ["더 구체적인 답변을 준비해보세요"],
+                    "nextSteps": ["면접 연습을 통해 실력을 향상시켜보세요"]
                 }
             
         except Exception as e:
             print(f"전체 피드백 생성 실패: {e}")
             return {
-                "strengths": ["AI 평가를 통해 구체적인 강점을 파악했습니다"],
-                "improvements": ["AI 평가를 통해 개선점을 파악했습니다"],
-                "nextSteps": ["AI 피드백을 바탕으로 면접 실력을 향상시켜보세요"]
+                "strengths": ["면접에 참여해주셔서 감사합니다"],
+                "improvements": ["더 구체적인 답변을 준비해보세요"],
+                "nextSteps": ["면접 연습을 통해 실력을 향상시켜보세요"]
             }
 
     async def generate_interview_questions(self, resume_content: str, question_count: int = 5) -> list:
         """자기소개서를 바탕으로 면접 질문을 생성합니다."""
         try:
             # API 키가 없거나 테스트 모드일 때
-            if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "your_openai_api_key_here":
+            if not OPENAI_API_KEY or OPENAI_API_KEY == "your_openai_api_key_here":
                 return self._generate_mock_interview_questions(resume_content, question_count)
             
             response = await self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+                model=OPENAI_MODEL,
                 messages=[
                     {
                         "role": "system",
@@ -464,11 +490,11 @@ JSON 형식으로 응답하세요:
         """답변을 바탕으로 추가 질문을 생성합니다."""
         try:
             # API 키가 없거나 테스트 모드일 때
-            if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "your_openai_api_key_here":
+            if not OPENAI_API_KEY or OPENAI_API_KEY == "your_openai_api_key_here":
                 return self._generate_mock_followup_question(original_question, answer)
             
             response = await self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+                model=OPENAI_MODEL,
                 messages=[
                     {
                         "role": "system",

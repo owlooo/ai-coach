@@ -84,14 +84,18 @@ async def analyze_resume(file: UploadFile = File(...), user_id: str = Form("anon
         # AI 분석 수행
         analysis_result = await ai_service.analyze_resume(text)
         
-        # Firebase Storage에 파일 업로드
+        # Firebase Storage에 파일 업로드 (로그인한 사용자만)
         file_url = None
-        try:
-            file_url = await firebase_service.upload_resume_file(content, file.filename, user_id)
-            print(f"파일이 Firebase Storage에 업로드되었습니다: {file_url}")
-        except Exception as e:
-            print(f"Firebase Storage 업로드 실패: {e}")
-            # Firebase 업로드 실패 시 로컬 저장으로 폴백
+        if user_id != "anonymous":
+            try:
+                file_url = await firebase_service.upload_resume_file(content, file.filename, user_id)
+                print(f"파일이 Firebase Storage에 업로드되었습니다: {file_url}")
+            except Exception as e:
+                print(f"Firebase Storage 업로드 실패: {e}")
+                # Firebase 업로드 실패 시 로컬 저장으로 폴백
+                file_url = file_path
+        else:
+            print(f"로그인하지 않은 사용자 - Firebase Storage 업로드 건너뜀 (사용자: {user_id})")
             file_url = file_path
 
         # 파일 정보 생성
@@ -106,20 +110,24 @@ async def analyze_resume(file: UploadFile = File(...), user_id: str = Form("anon
             "file_path": file_path
         }
 
-        # Firebase Firestore에 분석 결과 저장
-        try:
-            resume_data = {
-                "fileName": file.filename,
-                "fileSize": file.size,
-                "analyzedAt": datetime.now().isoformat(),
-                "analysis": analysis_result,
-                "fileInfo": file_info,
-                "extractedText": text
-            }
-            firestore_id = await firebase_service.save_resume_analysis(resume_data, user_id)
-            print(f"분석 결과가 Firestore에 저장되었습니다: {firestore_id}")
-        except Exception as e:
-            print(f"Firestore 저장 실패: {e}")
+        # Firebase Firestore에 분석 결과 저장 (로그인한 사용자만)
+        firestore_id = None
+        if user_id != "anonymous":
+            try:
+                resume_data = {
+                    "fileName": file.filename,
+                    "fileSize": file.size,
+                    "analyzedAt": datetime.now().isoformat(),
+                    "analysis": analysis_result,
+                    "fileInfo": file_info,
+                    "extractedText": text
+                }
+                firestore_id = await firebase_service.save_resume_analysis(resume_data, user_id)
+                print(f"분석 결과가 Firestore에 저장되었습니다: {firestore_id}")
+            except Exception as e:
+                print(f"Firestore 저장 실패: {e}")
+        else:
+            print(f"로그인하지 않은 사용자 - Firestore 저장 건너뜀 (사용자: {user_id})")
 
         return JSONResponse(
             status_code=200,

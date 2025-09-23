@@ -226,6 +226,32 @@ class FirebaseService:
             print(f"오디오 업로드 실패: {e}")
             raise e
     
+    async def upload_video_file(self, video_content: bytes, file_name: str, user_id: str = "anonymous") -> str:
+        """면접 비디오 파일을 Firebase Storage에 업로드 (사용자별 분리)"""
+        try:
+            file_id = str(uuid.uuid4())
+            blob_name = f"users/{user_id}/interviews/video/{file_id}_{file_name}"
+            blob = self.bucket.blob(blob_name)
+            
+            # 파일 확장자에 따라 content type 설정
+            if file_name.lower().endswith('.webm'):
+                content_type = 'video/webm'
+            elif file_name.lower().endswith('.mp4'):
+                content_type = 'video/mp4'
+            elif file_name.lower().endswith('.mov'):
+                content_type = 'video/quicktime'
+            else:
+                content_type = 'video/webm'  # 기본값
+            
+            blob.upload_from_string(video_content, content_type=content_type)
+            
+            # 공개 URL 생성
+            blob.make_public()
+            return blob.public_url
+        except Exception as e:
+            print(f"비디오 업로드 실패: {e}")
+            raise e
+    
     async def get_interview_history(self, user_id: str = "anonymous", limit: int = 50) -> List[Dict]:
         """면접 기록 목록 조회 (사용자별)"""
         try:

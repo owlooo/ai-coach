@@ -16,7 +16,7 @@ const Dashboard = () => {
   const { user } = useAuth()
   const [stats, setStats] = useState({
     totalInterviews: 0,
-    averageScore: 0,
+    highestScore: 0,
     totalResumes: 0,
     totalQuestions: 0,
     improvementCount: 0
@@ -31,9 +31,17 @@ const Dashboard = () => {
 
   const loadStats = async () => {
     try {
+      console.log('=== 대시보드 통계 로드 시작 ===')
+      console.log('사용자 UID:', user.uid)
+      
       const result = await statsService.getUserStats(user.uid)
+      console.log('통계 서비스 결과:', result)
+      
       if (result.data) {
+        console.log('설정할 통계 데이터:', result.data)
         setStats(result.data)
+      } else {
+        console.log('통계 데이터가 없음')
       }
     } catch (error) {
       console.error('통계 로드 에러:', error)
@@ -52,8 +60,8 @@ const Dashboard = () => {
       textColor: 'text-blue-600'
     },
     {
-      title: '평균 점수',
-      value: `${stats.averageScore}점`,
+      title: '최고 점수',
+      value: `${stats.highestScore}점`,
       icon: Award,
       color: 'from-green-500 to-green-600',
       bgColor: 'bg-green-50',

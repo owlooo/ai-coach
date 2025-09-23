@@ -1,23 +1,39 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, Clock, BarChart3, Download, Eye, RefreshCw } from 'lucide-react'
+import { Calendar, Clock, BarChart3, Download, Eye } from 'lucide-react'
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { useAuth } from '../contexts/AuthContext'
 
 const History = () => {
+  const { user, loading: authLoading } = useAuth()
   const [selectedTab, setSelectedTab] = useState('interviews')
   const [interviews, setInterviews] = useState([])
   const [resumes, setResumes] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // 사용자 ID 가져오기
+  // Firebase Auth 사용자 ID 가져오기
   const getUserId = () => {
-    return localStorage.getItem('userId') || 'anonymous'
+    if (!user || !user.uid) {
+      // 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
+      window.location.href = '/login'
+      return null
+    }
+    return user.uid
   }
 
-  // localStorage에서 데이터 로드
+  // Firebase에서 데이터 로드 (사용자 인증 상태 변경 시)
   useEffect(() => {
-    loadHistoryData()
-  }, [])
+    // 인증 로딩이 완료된 후에만 처리
+    if (!authLoading) {
+      if (user && user.uid) {
+        loadHistoryData()
+      } else {
+        // 로그인하지 않은 사용자는 로그인 페이지로 리다이렉트
+        console.log('로그인하지 않은 사용자 - 로그인 페이지로 리다이렉트')
+        window.location.href = '/login'
+      }
+    }
+  }, [user, authLoading])
 
   const loadHistoryData = async () => {
     try {
@@ -48,101 +64,12 @@ const History = () => {
         ...doc.data()
       }))
       setResumes(resumesData)
-
-      console.log('Firebase에서 데이터 로드 완료:', { 
-        interviews: interviewsData.length, 
-        resumes: resumesData.length 
-      })
     } catch (error) {
       console.error('Firebase 데이터 로드 실패:', error)
-      
-      // Firebase 실패 시 localStorage 폴백
-      try {
-        const savedInterviews = localStorage.getItem('interviewHistory')
-        if (savedInterviews) {
-          setInterviews(JSON.parse(savedInterviews))
-        }
-
-        const savedResumes = localStorage.getItem('resumeHistory')
-        if (savedResumes) {
-          setResumes(JSON.parse(savedResumes))
-        }
-      } catch (localError) {
-        console.error('localStorage 로드 실패:', localError)
-      }
+      setInterviews([])
+      setResumes([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  // 기록 새로고침
-  const refreshHistory = () => {
-    setLoading(true)
-    loadHistoryData()
-  }
-
-  // 테스트 데이터 추가 (디버깅용)
-  const addTestData = () => {
-    // 테스트 면접 데이터
-    const testInterview = {
-      id: Date.now(),
-      answers: [
-        {
-          questionIndex: 0,
-          question: "자기소개를 해주세요",
-          answer: "안녕하세요. 저는 개발자입니다.",
-          timestamp: new Date().toISOString()
-        }
-      ],
-      questions: ["자기소개를 해주세요", "왜 이 회사를 선택했나요?"],
-      completedAt: new Date().toISOString(),
-      evaluation: {
-        data: {
-          overallScore: 85,
-          scores: {
-            specificity: 8,
-            jobRelevance: 7,
-            logic: 9,
-            starMethod: 6
-          }
-        }
-      },
-      isResumeBased: false,
-      overallScore: 85
-    }
-
-    // 테스트 자기소개서 데이터
-    const testResume = {
-      id: Date.now() + 1,
-      fileName: "테스트_자기소개서.pdf",
-      fileSize: 1024000,
-      analyzedAt: new Date().toISOString(),
-      analysis: "테스트 자기소개서 분석 결과입니다.",
-      fileInfo: {
-        original_name: "테스트_자기소개서.pdf",
-        size: 1024000,
-        saved_name: "test_resume.pdf",
-        file_id: "test123",
-        upload_time: new Date().toISOString()
-      }
-    }
-
-    try {
-      // 면접 기록 추가
-      const existingInterviews = JSON.parse(localStorage.getItem('interviewHistory') || '[]')
-      existingInterviews.unshift(testInterview)
-      localStorage.setItem('interviewHistory', JSON.stringify(existingInterviews))
-
-      // 자기소개서 기록 추가
-      const existingResumes = JSON.parse(localStorage.getItem('resumeHistory') || '[]')
-      existingResumes.unshift(testResume)
-      localStorage.setItem('resumeHistory', JSON.stringify(existingResumes))
-
-      alert('테스트 데이터가 추가되었습니다!')
-      refreshHistory()
-    } catch (error) {
-      console.error('테스트 데이터 추가 실패:', error)
-      alert('테스트 데이터 추가에 실패했습니다.')
     }
   }
 
@@ -151,12 +78,38 @@ const History = () => {
     { id: 'resumes', name: '자소서 분석', count: resumes.length }
   ]
 
-  if (loading) {
+  // 로그인하지 않은 사용자 처리
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Eye className="w-8 h-8 text-blue-600" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">로그인이 필요합니다</h3>
+          <p className="text-gray-600 text-lg mb-6">
+            이전 기록을 보려면 먼저 로그인해주세요.
+          </p>
+          <button
+            onClick={() => window.location.href = '/login'}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            로그인하기
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // 인증 로딩 중이거나 데이터 로딩 중일 때
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6" />
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">기록을 불러오고 있습니다</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            {authLoading ? '로그인 상태를 확인하고 있습니다' : '기록을 불러오고 있습니다'}
+          </h3>
           <p className="text-gray-600 text-lg">잠시만 기다려주세요...</p>
         </div>
       </div>
@@ -166,25 +119,7 @@ const History = () => {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <div className="flex items-center justify-center mb-4">
-          <h1 className="text-3xl font-bold text-gray-900">이전 기록</h1>
-          <div className="ml-4 flex space-x-2">
-            <button
-              onClick={refreshHistory}
-              className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-              title="새로고침"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
-            <button
-              onClick={addTestData}
-              className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
-              title="테스트 데이터 추가"
-            >
-              테스트 데이터
-            </button>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">이전 기록</h1>
         <p className="text-lg text-gray-600">과거 면접 기록을 확인하고 성장을 추적하세요</p>
       </div>
 
@@ -258,9 +193,10 @@ const History = () => {
                         onClick={() => {
                           // Firebase ID가 있으면 직접 링크, 없으면 localStorage 사용
                           if (interview.id) {
-                            window.open(`/results/${interview.id}`, '_blank')
+                            // 같은 탭에서 열기 (인증 상태 유지)
+                            window.location.href = `/results/${interview.id}`
                           } else {
-                            // 면접 결과 상세 보기 (새 탭에서 열기)
+                            // 면접 결과 상세 보기
                             const resultData = {
                               answers: interview.answers,
                               questions: interview.questions,
@@ -269,7 +205,7 @@ const History = () => {
                               isResumeBased: interview.isResumeBased
                             }
                             localStorage.setItem('tempInterviewResult', JSON.stringify(resultData))
-                            window.open('/results', '_blank')
+                            window.location.href = '/results'
                           }
                         }}
                       >
@@ -361,7 +297,8 @@ const History = () => {
                         onClick={() => {
                           // Firebase ID가 있으면 직접 링크, 없으면 localStorage 사용
                           if (resume.id) {
-                            window.open(`/resume-report/${resume.id}`, '_blank')
+                            // 같은 탭에서 열기 (인증 상태 유지)
+                            window.location.href = `/resume-report/${resume.id}`
                           } else {
                             // 자기소개서 분석 결과 보기
                             const analysisData = {
@@ -369,7 +306,7 @@ const History = () => {
                               fileInfo: resume.fileInfo
                             }
                             localStorage.setItem('tempResumeAnalysis', JSON.stringify(analysisData))
-                            window.open('/resume-report', '_blank')
+                            window.location.href = '/resume-report'
                           }
                         }}
                       >
@@ -451,7 +388,7 @@ const History = () => {
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                <RefreshCw className="w-6 h-6 text-orange-600" />
+                <Download className="w-6 h-6 text-orange-600" />
               </div>
               <p className="text-2xl font-bold text-gray-900">
                 {interviews.reduce((acc, curr) => acc + (curr.answers?.length || 0), 0)}
