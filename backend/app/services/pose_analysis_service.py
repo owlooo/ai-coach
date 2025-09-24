@@ -1,13 +1,20 @@
-import cv2
 import json
-import numpy as np
 import os
 import tempfile
 from collections import deque
-from ultralytics import YOLO
 from typing import Optional, Dict, Any, List
 import asyncio
 from pathlib import Path
+
+# 조건부 import (Vercel 등에서 비활성화 가능)
+try:
+    import cv2
+    import numpy as np
+    from ultralytics import YOLO
+    HAS_CV2 = True
+except ImportError:
+    HAS_CV2 = False
+    print("OpenCV/NumPy/YOLO 패키지가 설치되지 않았습니다. 포즈 분석이 비활성화됩니다.")
 
 class PoseAnalysisService:
     def __init__(self):
@@ -60,6 +67,11 @@ class PoseAnalysisService:
 
     def _load_model(self):
         """YOLO 모델 조건부 로드 (Vercel 등에서 비활성화 가능)"""
+        if not HAS_CV2:
+            print("OpenCV/NumPy/YOLO 패키지가 없어 모델 로드를 건너뜁니다.")
+            self.model = None
+            return
+            
         # 환경 변수로 YOLO 모델 활성화/비활성화 제어
         if os.getenv('ENABLE_YOLO', 'true').lower() == 'true':
             try:
@@ -79,10 +91,14 @@ class PoseAnalysisService:
 
     def distance(self, a, b):
         """두 점 사이의 거리 계산"""
+        if not HAS_CV2:
+            return 0.0
         return float(np.linalg.norm(a - b))
 
     def midpoint(self, a, b):
         """두 점의 중점 계산"""
+        if not HAS_CV2:
+            return [0.0, 0.0]
         return (a + b) / 2.0
 
     def valid_width(self, w):
@@ -272,6 +288,14 @@ class PoseAnalysisService:
 
     async def analyze_frame(self, frame_data: bytes) -> Dict[str, Any]:
         """단일 프레임 분석"""
+        if not HAS_CV2:
+            return {
+                "success": True,
+                "events": [],
+                "counts": {},
+                "feedback": ["포즈 분석 패키지가 설치되지 않아 분석을 건너뜁니다."]
+            }
+            
         if self.model is None:
             return {
                 "success": False,
@@ -352,6 +376,14 @@ class PoseAnalysisService:
 
     async def analyze_video_file(self, video_path: str) -> Dict[str, Any]:
         """비디오 파일 분석"""
+        if not HAS_CV2:
+            return {
+                "success": True,
+                "events": [],
+                "counts": {},
+                "feedback": ["포즈 분석 패키지가 설치되지 않아 분석을 건너뜁니다."]
+            }
+            
         if self.model is None:
             return {
                 "success": False,
